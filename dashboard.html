@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiToken | Painel do Investidor</title>
+    <link rel="icon" type="image/x-icon" href="https://multitoken.top/images/favicon.ico">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- SPL Solana SDK -->
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; overflow-x: hidden; }
+        .bg-animated { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-image: url('https://multitoken.top/images/background2.jpg'); background-size: cover; background-position: center; z-index: -2; animation: breathe 25s ease-in-out infinite alternate; }
+        @keyframes breathe { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
+        .bg-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: transparent; z-index: -1; }
+        .glass-card { background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+
+        .input-simulador { font-size: 2.5rem; font-weight: 900; color: #0f172a; text-align: center; background: transparent; border: none; outline: none; width: 100%; border-bottom: 2px dashed #cbd5e1; transition: 0.3s; padding-bottom: 8px; }
+        .input-simulador:focus { border-bottom-color: #3b82f6; }
+
+        .pay-method { cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
+        .pay-method.active { border-color: #3b82f6; background-color: #eff6ff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); }
+        .pay-method:hover:not(.active) { background-color: #f8fafc; border-color: #e2e8f0; }
+
+        .lang-btn { padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 800; color: #64748b; cursor: pointer; transition: all 0.2s; border: none; background: transparent; }
+        .lang-btn.active { background: #1e293b; color: white; }
+
+        .social-btn { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: #ffffff; border: 1px solid #e2e8f0; font-size: 1.4rem; text-decoration: none; padding: 0; }
+        .social-btn:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+    </style>
+</head>
+<body class="min-h-screen relative flex flex-col items-center justify-start">
+
+    <div class="bg-animated"></div>
+    <div class="bg-overlay"></div>
+
+    <header class="w-full max-w-6xl mx-auto px-4 py-6 flex justify-between items-center relative z-10">
+        <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition" onclick="window.location.href='/'">
+            <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md border border-slate-200"><i class="fas fa-arrow-left text-slate-600"></i></div>
+            <span class="font-black text-slate-800 uppercase tracking-widest hidden sm:block" data-i18n="back_store">Voltar à Vitrine</span>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div class="bg-white/90 border border-slate-200 rounded-full p-1 flex items-center shadow-sm backdrop-blur-md">
+                <button onclick="setLanguage('pt')" id="btn-pt" class="lang-btn active">PT</button>
+                <button onclick="setLanguage('en')" id="btn-en" class="lang-btn">EN</button>
+            </div>
+
+            <div class="flex items-center gap-2 bg-white/90 border border-slate-200 rounded-full p-1 pl-4 shadow-sm backdrop-blur-md">
+                <span id="walletDisplay" class="text-xs font-mono font-bold text-slate-700 flex items-center gap-2">
+                    <i class="fas fa-shield-alt text-emerald-500"></i> Carregando...
+                </span>
+                <button onclick="fazerLogout()" class="bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors" title="Sair">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="w-full max-w-5xl mx-auto px-4 flex-grow relative z-10">
+
+        <div id="loadingArea" class="text-center py-20">
+            <i class="fas fa-circle-notch fa-spin text-5xl text-blue-600 mb-4"></i>
+            <h2 class="text-xl font-bold text-slate-700 uppercase tracking-widest" data-i18n="loading_dashboard">Preparando Simulador...</h2>
+        </div>
+
+        <div id="mainDashboard" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+
+            <div class="lg:col-span-5 flex flex-col gap-6">
+                <div class="glass-card rounded-[24px] p-8 relative overflow-hidden border-t-4 border-t-blue-500">
+                    <div id="badgeBonusDiv" class="hidden absolute top-4 right-4 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[11px] font-black px-4 py-1.5 rounded-full shadow-lg animate-bounce">
+                        <i class="fas fa-gift mr-1"></i><span id="badgeBonusText"></span>
+                    </div>
+
+                    <div class="flex items-center gap-5 mb-6">
+                        <img id="tokenLogo" src="" alt="Logo" class="w-24 h-24 rounded-full border-4 border-white object-cover shadow-lg">
+                        <div>
+                            <h2 id="tokenSymbol" class="text-3xl font-black text-slate-800 uppercase tracking-tight"></h2>
+                            <p id="tokenName" class="text-slate-500 font-bold text-sm mb-1"></p>
+                            <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-black uppercase"><i class="fas fa-check-circle"></i> Venda Privada</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200 text-center shadow-inner">
+                        <p class="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1" data-i18n="price">Preço Unitário</p>
+                        <p id="tokenPrice" class="text-3xl font-black text-emerald-600"></p>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-bold mb-2">
+                            <span class="text-slate-500 uppercase" data-i18n="sold_progress">Vendido</span>
+                            <span id="progressPercent" class="text-blue-600"></span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-3 mb-2 shadow-inner overflow-hidden">
+                            <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-sky-400 h-3 rounded-full relative"></div>
+                        </div>
+                        <p id="progressText" class="text-[11px] text-slate-500 text-right font-mono font-bold tracking-tight"></p>
+                    </div>
+
+                    <hr class="my-5 border-slate-200">
+                    <div class="flex justify-between items-center text-xs font-bold text-slate-600">
+                        <span><i class="fas fa-arrow-down text-red-500"></i> Mín: <span id="minPurchase"></span></span>
+                        <span><i class="fas fa-arrow-up text-emerald-500"></i> Máx: <span id="maxPurchase"></span></span>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-[24px] p-6 border-l-4 border-l-emerald-500">
+                    <h3 class="font-black text-slate-800 uppercase text-sm mb-2 flex items-center gap-2">
+                        <i class="fas fa-shield-check text-emerald-500 text-lg"></i> <span data-i18n="sec_title">Transação Segura</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 font-semibold leading-relaxed" data-i18n="sec_desc">
+                        Sua compra é processada em ambiente criptografado. Os tokens serão enviados diretamente para a carteira Solana conectada assim que o pagamento for confirmado na rede.
+                    </p>
+                </div>
+            </div>
+
+            <div class="lg:col-span-7">
+                <div class="glass-card rounded-[24px] p-8 h-full flex flex-col">
+
+                    <h3 class="text-xl font-black text-slate-800 mb-6 uppercase tracking-wide border-b border-slate-200 pb-3" data-i18n="sim_title">
+                        <i class="fas fa-calculator text-blue-500 mr-2"></i> Simulador de Compra
+                    </h3>
+
+                    <div class="mb-8">
+                        <label class="block text-center text-sm font-black text-slate-500 uppercase tracking-widest mb-4" data-i18n="sim_input_lbl">Informe o valor em Dólar (USD)</label>
+                        <div class="relative flex items-center justify-center">
+                            <span class="absolute left-4 text-3xl font-black text-slate-300">$</span>
+                            <input type="number" id="inputAmount" class="input-simulador" placeholder="0.00" oninput="calcularSimulacao()">
+                        </div>
+                        <p id="errorAmount" class="text-center text-red-500 text-xs font-bold mt-3 hidden"></p>
+                    </div>
+
+                    <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3" data-i18n="sim_pay_method">Método de Pagamento</label>
+                    <div class="grid grid-cols-2 gap-4 mb-8">
+                        <div class="pay-method active rounded-xl p-4 flex flex-col items-center justify-center gap-2 bg-white shadow-sm border border-slate-200" onclick="selecionarPagamento('pix', this)">
+                            <i class="fa-brands fa-pix text-3xl text-emerald-500"></i>
+                            <span class="text-[11px] font-black uppercase text-slate-700">PIX Transparente</span>
+                        </div>
+                        <div class="pay-method rounded-xl p-4 flex flex-col items-center justify-center gap-2 bg-white shadow-sm border border-slate-200" onclick="selecionarPagamento('solana', this)">
+                            <svg class="w-8 h-8 text-purple-500" viewBox="0 0 393.7 334.3" fill="currentColor">
+                                <path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z"/>
+                                <path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z"/>
+                                <path d="M329.1 118.9c-2.4-2.4-5.7-3.8-9.2-3.8H2.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z"/>
+                            </svg>
+                            <span class="text-[11px] font-black uppercase text-slate-700 mt-1">Rede Solana</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 mb-6 shadow-inner flex-grow">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs font-bold text-slate-500 uppercase" data-i18n="sim_res_tokens">Tokens Base:</span>
+                            <span id="resBase" class="text-sm font-black text-slate-800 font-mono">0.00</span>
+                        </div>
+
+                        <div id="linhaBonus" class="flex justify-between items-center mb-3 hidden">
+                            <span class="text-xs font-bold text-orange-500 uppercase"><i class="fas fa-gift"></i> <span data-i18n="sim_res_bonus">Bônus:</span></span>
+                            <span id="resBonus" class="text-sm font-black text-orange-500 font-mono">+ 0.00</span>
+                        </div>
+
+                        <hr class="border-slate-200 my-3">
+
+                        <div class="flex justify-between items-end">
+                            <div>
+                                <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1" data-i18n="sim_res_receive">Você Recebe</span>
+                                <span id="resTotalTokens" class="text-2xl font-black text-blue-600 font-mono">0.00 <span class="text-sm" id="resSymbol"></span></span>
+                            </div>
+                            <div class="text-right">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1" data-i18n="sim_res_pay">Total a Pagar</span>
+                                <span id="resTotalFiat" class="text-xl font-black text-emerald-600">R$ 0,00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p id="liveDollarDisplay" class="text-center text-[11px] text-blue-500 font-bold mb-4 animate-pulse"><i class="fas fa-sync-alt fa-spin mr-1"></i> Buscando Oráculos...</p>
+
+                    <button id="btnCheckout" disabled onclick="gerarPagamento()" class="w-full bg-slate-300 text-slate-500 font-black py-4 rounded-xl text-center transition-all uppercase tracking-wide flex items-center justify-center gap-2 cursor-not-allowed mb-4">
+                        <span data-i18n="sim_btn_checkout">Gerar Pagamento</span> <i class="fas fa-lock"></i>
+                    </button>
+
+                    <p class="text-center text-[10px] text-slate-400 font-bold mb-4">* Taxas da rede/método de pagamento já inclusas no total de tokens alocados.</p>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="historicoArea" class="hidden w-full mt-10 border-t border-slate-300 pt-10 pb-10">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl shadow-inner">
+                    <i class="fas fa-history"></i>
+                </div>
+                <h3 class="text-2xl font-black text-slate-800 uppercase tracking-tight" data-i18n="my_purchases">Minhas Compras</h3>
+            </div>
+
+            <div class="glass-card rounded-[24px] shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100/50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-500 font-black">
+                                <th class="p-4" data-i18n="th_date">Data</th>
+                                <th class="p-4" data-i18n="th_project">Projeto</th>
+                                <th class="p-4" data-i18n="th_paid">Valor Pago</th>
+                                <th class="p-4" data-i18n="th_received">Tokens Recebidos</th>
+                                <th class="p-4" data-i18n="th_status">Status</th>
+                                <th class="p-4" data-i18n="th_txid">Blockchain (TXID)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gridHistorico" class="text-sm divide-y divide-slate-100/50">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="w-full bg-white/70 border-t border-slate-200 py-8 relative z-10 backdrop-blur-md mt-6">
+        <div class="max-w-5xl mx-auto px-4 flex flex-col items-center">
+            <h3 data-i18n="community_title" class="text-slate-700 font-bold text-sm mb-4 uppercase tracking-wider">Comunidade Oficial</h3>
+            <div class="flex gap-4 mb-6">
+                <a href="https://t.me/multitokentop" target="_blank" class="social-btn btn-tg" title="Telegram"><i class="fab fa-telegram-plane"></i></a>
+                <a href="https://x.com/multitokenswap" target="_blank" class="social-btn btn-x" title="X / Twitter"><i class="fa-brands fa-x-twitter"></i></a>
+                <a href="https://www.instagram.com/multitokentop" target="_blank" class="social-btn btn-ig" title="Instagram"><i class="fab fa-instagram"></i></a>
+            </div>
+            <p class="text-slate-500 text-[11px] font-semibold text-center leading-relaxed">
+                &copy; 2026 Ecossistema MultiToken ($MITK). <span data-i18n="rights">Todos os direitos reservados.</span><br>
+                <span data-i18n="developed_on">Desenvolvido e assegurado na Blockchain Solana.</span>
+            </p>
+        </div>
+    </footer>
+
+    <!-- MODAL DE CHECKOUT PIX -->
+    <div id="modalPix" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl relative transform scale-95 transition-transform duration-300" id="modalPixContent">
+            <button onclick="fecharModalPix()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+            <div class="text-center mb-6">
+                <i class="fa-brands fa-pix text-4xl text-emerald-500 mb-3"></i>
+                <h3 class="text-xl font-black text-slate-800 uppercase">Pagamento Gerado</h3>
+                <p class="text-xs text-slate-500 font-semibold mt-1">Escaneie o QR Code ou copie o código abaixo para pagar no seu banco.</p>
+            </div>
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex justify-center mb-6">
+                <img id="pixQrCodeImage" src="" alt="QR Code PIX" class="w-48 h-48 rounded-lg shadow-sm border border-slate-200">
+            </div>
+            <div class="relative mb-2">
+                <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Pix Copia e Cola</label>
+                <input type="text" id="pixCopiaCola" readonly class="w-full bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-mono p-3 rounded-xl pr-12 focus:outline-none">
+                <button onclick="copiarPix()" class="absolute right-2 top-8 w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 hover:bg-emerald-500 hover:text-white transition shadow-sm"><i class="fas fa-copy"></i></button>
+            </div>
+            <div class="mt-6 text-center border-t border-slate-100 pt-4">
+                <p class="text-[10px] font-bold text-slate-400 leading-relaxed animate-pulse"><i class="fas fa-spinner fa-spin text-blue-400 mr-1"></i> Aguardando pagamento...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CHECKOUT SOLANA HÍBRIDO -->
+    <div id="modalSolana" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto mx-4 shadow-2xl relative transform scale-95 transition-transform duration-300" id="modalSolanaContent">
+            <button onclick="fecharModalSolana()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-500 transition z-10"><i class="fas fa-times"></i></button>
+
+            <!-- CABEÇALHO MODAL -->
+            <div class="bg-slate-800 p-6 text-center text-white rounded-t-3xl border-b-4 border-purple-500">
+                <h3 class="text-xl font-black uppercase tracking-widest">Gateway Solana</h3>
+                <p class="text-xs text-slate-400 font-bold mt-1">Valor a enviar: <span id="solAmountDisplay" class="text-white font-mono"></span> SOL</p>
+            </div>
+
+            <div class="p-6">
+                <!-- ÁREA 1: PAGAMENTO AUTOMÁTICO (FAST PAY) -->
+                <div class="text-center mb-6">
+                    <button id="btnWeb3Pay" onclick="pagarComCarteiraWeb3()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-4 rounded-xl shadow-lg transition transform active:scale-[0.98] uppercase tracking-wider flex items-center justify-center gap-3">
+                        <i class="fas fa-wallet text-xl"></i> <span data-i18n="sol_btn_auto">Conectar e Pagar (Automático)</span>
+                    </button>
+                    <p class="text-[10px] text-slate-500 font-bold mt-2 px-4" data-i18n="sol_desc_auto">Compatível com Phantom, Solflare, e aplicativos de celular via Solana Pay.</p>
+                </div>
+
+                <!-- DIVISOR -->
+                <div class="flex items-center my-6">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">OU TRANSFERÊNCIA MANUAL</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <!-- ÁREA 2: PAGAMENTO MANUAL (ANTI-DRAINER) -->
+                <div class="bg-red-50 border-l-4 border-red-500 p-3 mb-4 text-left shadow-sm rounded-r-lg">
+                    <h4 class="text-red-700 font-black text-[10px] uppercase mb-1" data-i18n="sol_alert_title"><i class="fas fa-exclamation-triangle"></i> Atenção Crítica</h4>
+                    <p class="text-[10px] text-red-600 font-semibold leading-tight" data-i18n="sol_alert_msg">Transfira os fundos EXATAMENTE da mesma carteira que você conectou nesta plataforma. Não envie direto de corretoras (Binance, OKX, etc.).</p>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 shadow-inner">
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1" data-i18n="sol_wallet_lbl">Carteira Oficial do Projeto</label>
+                    <div class="relative">
+                        <input type="text" id="solWalletCopy" readonly class="w-full bg-white border border-slate-300 text-slate-700 text-[10px] font-mono p-3 rounded-xl pr-12 focus:outline-none">
+                        <button onclick="copiarSolWallet()" class="absolute right-1 top-1 w-8 h-8 flex items-center justify-center rounded-lg bg-slate-200 text-slate-600 hover:bg-slate-800 hover:text-white transition"><i class="fas fa-copy"></i></button>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2" data-i18n="sol_txid_lbl">Cole o TXID (Hash) da Transação</label>
+                    <input type="text" id="solTxidInput" placeholder="Ex: 5xR..." class="w-full bg-white border border-slate-300 text-slate-700 text-xs font-mono p-4 rounded-xl focus:border-blue-500 outline-none">
+                </div>
+
+                <button id="btnValidarSolana" onclick="validarSolana()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-black py-4 rounded-xl shadow-md transition uppercase tracking-wider flex items-center justify-center gap-2">
+                    <span data-i18n="sol_btn_validate">Validar e Receber Tokens</span> <i class="fas fa-check-circle"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const i18n = {
+            pt: {
+                back_store: "Voltar à Vitrine", loading_dashboard: "Preparando Simulador...", price: "Preço Unitário",
+                sold_progress: "Vendido", sec_title: "Transação Segura", sec_desc: "Sua compra é processada em ambiente criptografado. Os tokens serão enviados diretamente para a carteira Solana conectada assim que o pagamento for confirmado na rede.",
+                sim_title: "Simulador de Compra", sim_input_lbl: "Informe o valor em Dólar (USD)", sim_pay_method: "Método de Pagamento",
+                sim_res_tokens: "Tokens Base:", sim_res_bonus: "Bônus:", sim_res_receive: "Você Recebe",
+                sim_res_pay: "Total a Pagar", sim_btn_checkout: "Gerar Pagamento", err_min: "Valor Mínimo: $", err_max: "Valor Máximo: $",
+                community_title: "Comunidade Oficial", rights: "Todos os direitos reservados.", developed_on: "Desenvolvido e assegurado na Blockchain Solana.",
+                my_purchases: "Minhas Compras", no_purchases: "Nenhuma transação encontrada.", status_completed: "Concluída", status_pending: "Pendente",
+                status_failed: "Falhou", paid: "Pago", received: "Recebido",
+                th_date: "Data", th_project: "Projeto", th_paid: "Valor Pago", th_received: "Tokens Recebidos", th_status: "Status", th_txid: "Blockchain (TXID)",
+                live_dollar: "Cotação do Dólar: R$",
+                sol_btn_auto: "Conectar e Pagar (Automático)", sol_desc_auto: "Compatível com Phantom, Solflare, e aplicativos de celular via Solana Pay.",
+                sol_wallet_lbl: "Carteira Oficial do Projeto", sol_txid_lbl: "Cole o TXID ou Link do Solscan",
+                sol_btn_validate: "Validar Transação Manual",
+                sol_alert_title: "<i class='fas fa-exclamation-triangle'></i> Atenção Crítica",
+                sol_alert_msg: "Transfira os fundos EXATAMENTE da mesma carteira que você conectou nesta plataforma. Não envie direto de corretoras (Binance, OKX, etc.)."
+            },
+            en: {
+                back_store: "Back to Store", loading_dashboard: "Preparing Simulator...", price: "Unit Price",
+                sold_progress: "Sold", sec_title: "Secure Transaction", sec_desc: "Your purchase is processed in an encrypted environment. Tokens will be sent directly to the connected Solana wallet once payment is confirmed on the network.",
+                sim_title: "Purchase Simulator", sim_input_lbl: "Enter amount in Dollars (USD)", sim_pay_method: "Payment Method",
+                sim_res_tokens: "Base Tokens:", sim_res_bonus: "Bonus:", sim_res_receive: "You Receive",
+                sim_res_pay: "Total to Pay", sim_btn_checkout: "Proceed to Checkout", err_min: "Minimum Value: $", err_max: "Maximum Value: $",
+                community_title: "Official Community", rights: "All rights reserved.", developed_on: "Developed and secured on the Solana Blockchain.",
+                my_purchases: "My Purchases", no_purchases: "No transactions found.", status_completed: "Completed", status_pending: "Pending",
+                status_failed: "Failed", paid: "Paid", received: "Received",
+                th_date: "Date", th_project: "Project", th_paid: "Amount Paid", th_received: "Tokens Received", th_status: "Status", th_txid: "Blockchain (TXID)",
+                live_dollar: "Live Dollar Rate: R$",
+                sol_btn_auto: "Connect & Pay (Auto)", sol_desc_auto: "Compatible with Phantom, Solflare, and mobile apps via Solana Pay.",
+                sol_wallet_lbl: "Official Project Wallet", sol_txid_lbl: "Paste TXID or Solscan Link",
+                sol_btn_validate: "Validate Manual Transaction",
+                sol_alert_title: "<i class='fas fa-exclamation-triangle'></i> Critical Warning",
+                sol_alert_msg: "Transfer funds EXACTLY from the same wallet you connected to this platform. Do not send directly from exchanges (Binance, OKX, etc.)."
+            }
+        };
+
+        let currentLang = localStorage.getItem('mitk_lang') || 'pt';
+
+        function setLanguage(lang) {
+            currentLang = lang; localStorage.setItem('mitk_lang', lang);
+            document.querySelectorAll('[data-i18n]').forEach(el => { const key = el.getAttribute('data-i18n'); if (i18n[lang][key]) el.innerHTML = i18n[lang][key]; });
+            document.getElementById('btn-pt').classList.remove('active'); document.getElementById('btn-en').classList.remove('active');
+            document.getElementById('btn-' + lang).classList.add('active');
+
+            if(cotacaoDolarAtiva > 0) {
+                document.getElementById('liveDollarDisplay').innerHTML = `<i class="fas fa-check-circle mr-1"></i> ${i18n[currentLang].live_dollar} ${cotacaoDolarAtiva.toFixed(4)}`;
+            }
+            if(window.dadosCampanha) calcularSimulacao();
+            carregarMinhasCompras();
+        }
+
+        let dadosCampanha = null;
+        let metodoSelecionado = 'pix';
+        let cotacaoDolarAtiva = 0;
+        let platformSettings = { taxa_pix: 0, taxa_cartao: 0 };
+        let pollerSolana = null;
+
+        window.onload = async () => {
+            setLanguage(currentLang);
+            const token = localStorage.getItem('ps_investor_token');
+            const wallet = localStorage.getItem('ps_investor_wallet');
+            if (!token || !wallet) { window.location.href = '/'; return; }
+
+            document.getElementById('walletDisplay').innerHTML = `<i class="fas fa-shield-alt text-emerald-500"></i> ${wallet.substring(0,4)}...${wallet.slice(-4)}`;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get('id');
+            if (!id) { window.location.href = '/'; return; }
+
+            try {
+                const resSet = await fetch('/api/public/settings');
+                if (resSet.ok) platformSettings = await resSet.json();
+            } catch(e) {}
+
+            try {
+                const resCotacao = await fetch('/api/public/cotacao');
+                if(resCotacao.ok) {
+                    const dataCotacao = await resCotacao.json();
+                    if(dataCotacao.cotacao) {
+                        cotacaoDolarAtiva = dataCotacao.cotacao;
+                        document.getElementById('liveDollarDisplay').innerHTML = `<i class="fas fa-check-circle mr-1 text-emerald-500"></i> ${i18n[currentLang].live_dollar} ${cotacaoDolarAtiva.toFixed(4)}`;
+                        document.getElementById('liveDollarDisplay').classList.remove('animate-pulse', 'text-blue-500');
+                        document.getElementById('liveDollarDisplay').classList.add('text-slate-600');
+                    }
+                }
+            } catch(e) {}
+
+            await carregarDadosCampanha(id);
+            await carregarMinhasCompras();
+        };
+
+        function fazerLogout() { localStorage.removeItem('ps_investor_token'); localStorage.removeItem('ps_investor_wallet'); window.location.href = '/'; }
+        function formatarInteiro(valor) { return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.floor(valor)); }
+        function formatarTokens(valor) { return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(valor); }
+
+        async function carregarDadosCampanha(id) {
+            try {
+                const res = await fetch('/api/public/presales');
+                const campanhas = await res.json();
+                dadosCampanha = campanhas.find(c => c.id == id);
+                if (!dadosCampanha) { Swal.fire('Erro', 'Campanha não encontrada.', 'error').then(()=> window.location.href = '/'); return; }
+
+                preencherUI();
+                document.getElementById('loadingArea').classList.add('hidden');
+                document.getElementById('mainDashboard').classList.remove('hidden');
+            } catch (e) { Swal.fire('Erro', 'Não foi possível carregar os dados.', 'error'); }
+        }
+
+        function preencherUI() {
+            document.getElementById('tokenLogo').src = dadosCampanha.logo_url;
+            document.getElementById('tokenSymbol').innerText = dadosCampanha.symbol;
+            document.getElementById('tokenName').innerText = dadosCampanha.name;
+            document.getElementById('tokenPrice').innerText = `$ ${dadosCampanha.price_usd.toFixed(8)}`;
+
+            const progresso = ((dadosCampanha.tokens_sold / dadosCampanha.hardcap_tokens) * 100).toFixed(1);
+            document.getElementById('progressPercent').innerText = `${progresso}%`;
+            document.getElementById('progressBar').style.width = `${progresso}%`;
+            document.getElementById('progressText').innerText = `${formatarInteiro(dadosCampanha.tokens_sold)} / ${formatarInteiro(dadosCampanha.hardcap_tokens)}`;
+
+            document.getElementById('minPurchase').innerText = `$${dadosCampanha.min_purchase_usd}`;
+            document.getElementById('maxPurchase').innerText = `$${dadosCampanha.max_purchase_usd}`;
+
+            if (dadosCampanha.bonus_percent > 0) {
+                document.getElementById('badgeBonusDiv').classList.remove('hidden');
+                document.getElementById('badgeBonusText').innerText = `+${dadosCampanha.bonus_percent}% BÔNUS`;
+                document.getElementById('linhaBonus').classList.remove('hidden');
+            }
+            document.getElementById('resSymbol').innerText = dadosCampanha.symbol;
+        }
+
+        function selecionarPagamento(tipo, elemento) {
+            metodoSelecionado = tipo;
+            document.querySelectorAll('.pay-method').forEach(el => el.classList.remove('active'));
+            elemento.classList.add('active');
+            calcularSimulacao();
+        }
+
+        function calcularSimulacao() {
+            if(!dadosCampanha) return;
+            const inputVal = parseFloat(document.getElementById('inputAmount').value);
+            const errEl = document.getElementById('errorAmount');
+            const btn = document.getElementById('btnCheckout');
+
+            errEl.classList.add('hidden');
+            btn.disabled = true;
+            btn.className = "w-full bg-slate-300 text-slate-500 font-black py-4 rounded-xl text-center transition-all uppercase tracking-wide flex items-center justify-center gap-2 cursor-not-allowed mb-4";
+
+            if (!inputVal || inputVal <= 0) {
+                document.getElementById('resBase').innerText = "0.00"; document.getElementById('resBonus').innerText = "+ 0.00";
+                document.getElementById('resTotalTokens').innerHTML = `0.00 <span class="text-sm">${dadosCampanha.symbol}</span>`;
+                document.getElementById('resTotalFiat').innerText = metodoSelecionado === 'solana' ? "0.00 SOL" : "R$ 0,00";
+                return;
+            }
+
+            if (inputVal < dadosCampanha.min_purchase_usd) { errEl.innerText = `${i18n[currentLang].err_min}${dadosCampanha.min_purchase_usd}`; errEl.classList.remove('hidden'); return; }
+            if (inputVal > dadosCampanha.max_purchase_usd) { errEl.innerText = `${i18n[currentLang].err_max}${dadosCampanha.max_purchase_usd}`; errEl.classList.remove('hidden'); return; }
+
+            if (cotacaoDolarAtiva === 0 && metodoSelecionado === 'pix') {
+                errEl.innerText = "Oráculos indisponíveis. Aguarde."; errEl.classList.remove('hidden'); return;
+            }
+
+            let feePercent = 0;
+            if (metodoSelecionado === 'pix') feePercent = parseFloat(platformSettings.taxa_pix || 0);
+
+            const netUsd = inputVal - (inputVal * (feePercent / 100));
+            const tokensBase = netUsd / dadosCampanha.price_usd;
+            const tokensBonus = (tokensBase * dadosCampanha.bonus_percent) / 100;
+            const totalTokens = tokensBase + tokensBonus;
+            const valorBrl = inputVal * cotacaoDolarAtiva;
+
+            document.getElementById('resBase').innerText = formatarTokens(tokensBase);
+            document.getElementById('resBonus').innerText = "+ " + formatarTokens(tokensBonus);
+            document.getElementById('resTotalTokens').innerHTML = `${formatarInteiro(totalTokens)} <span class="text-sm">${dadosCampanha.symbol}</span>`;
+
+            if (metodoSelecionado === 'solana') {
+                document.getElementById('resTotalFiat').innerText = `≈ $${inputVal.toFixed(2)} (Em SOL)`;
+            } else {
+                document.getElementById('resTotalFiat').innerText = `R$ ${valorBrl.toFixed(2).replace('.', ',')}`;
+            }
+
+            btn.disabled = false;
+            btn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl text-center transition-all shadow-lg shadow-blue-500/30 uppercase tracking-wide flex items-center justify-center gap-2 cursor-pointer mb-4";
+        }
+
+        // ==========================================
+        // FLUXO DE PAGAMENTO SOLANA HÍBRIDO
+        // ==========================================
+        function abrirModalSolana(wallet, amountSol) {
+            document.getElementById('solWalletCopy').value = wallet;
+            document.getElementById('solAmountDisplay').innerText = amountSol;
+            document.getElementById('solTxidInput').value = '';
+
+            document.getElementById('btnWeb3Pay').setAttribute('data-amount', amountSol);
+
+            const modal = document.getElementById('modalSolana');
+            const content = document.getElementById('modalSolanaContent');
+
+            modal.classList.remove('hidden');
+            setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
+        }
+
+        function fecharModalSolana() {
+            if(pollerSolana) clearInterval(pollerSolana);
+            const modal = document.getElementById('modalSolana');
+            const content = document.getElementById('modalSolanaContent');
+            modal.classList.add('opacity-0'); content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        window.copiarSolWallet = function() {
+            const copyText = document.getElementById("solWalletCopy");
+            copyText.select(); document.execCommand('copy');
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Carteira Copiada!', showConfirmButton: false, timer: 3000 });
+        }
+
+        // A MÁGICA DO "1 CLIQUE" COM DETECÇÃO UNIVERSAL (SOLANA PAY)
+        async function pagarComCarteiraWeb3() {
+            const destWallet = document.getElementById('solWalletCopy').value;
+            const amountSol = parseFloat(document.getElementById('btnWeb3Pay').getAttribute('data-amount'));
+            const btn = document.getElementById('btnWeb3Pay');
+
+            try {
+                const provider = window.phantom?.solana || window.solana;
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+                // ========================================================
+                // FLUXO MOBILE WEB (FORA DO APP DA CARTEIRA): SOLANA PAY
+                // ========================================================
+                if (isMobile && !provider) {
+                    // Gera a "etiqueta" invisível para o Radar achar a transação na blockchain
+                    const reference = solanaWeb3.Keypair.generate().publicKey;
+
+                    // Formata o valor rigorosamente em decimal para evitar que as wallets leiam "0" em SOs específicos
+                    const amountStr = amountSol.toFixed(9).replace(/\.?0+$/, ''); // Remove zeros à direita indesejados mas deixa o decimal válido
+
+                    // Formata a URL no padrão universal Solana Pay (Abre qualquer App Web3 instalado)
+                    const solanaUrl = `solana:${destWallet}?amount=${amountStr}&reference=${reference.toBase58()}&label=MultiToken`;
+
+                    // Chama a App da Carteira pelo SO
+                    window.location.href = solanaUrl;
+
+                    Swal.fire({
+                        title: 'Aguardando Pagamento',
+                        html: `Complete a transação no aplicativo da sua carteira (Phantom, Solflare, etc.). O valor já estará preenchido.<br><br><span class="text-xs text-slate-500 font-bold">Após aprovar, volte para esta tela!</span>`,
+                        icon: 'info',
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading() }
+                    });
+
+                    btn.innerHTML = '<i class="fas fa-radar fa-spin"></i> Aguardando Blockchain...';
+
+                    // Liga o Radar invisível
+                    iniciarRadarSolanaPay(reference);
+                    return;
+                }
+
+                // ========================================================
+                // FLUXO PC (Extensão) Ou Mobile DENTRO do navegador da Carteira
+                // ========================================================
+                if (!provider) {
+                    return Swal.fire('Atenção', 'Nenhuma extensão de carteira detectada. Use a transferência manual abaixo.', 'warning');
+                }
+
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...';
+
+                await provider.connect();
+                const fromPubkey = provider.publicKey;
+                const toPubkey = new solanaWeb3.PublicKey(destWallet);
+                const lamports = Math.floor(amountSol * solanaWeb3.LAMPORTS_PER_SOL);
+
+                const transaction = new solanaWeb3.Transaction().add(
+                    solanaWeb3.SystemProgram.transfer({ fromPubkey, toPubkey, lamports })
+                );
+
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Lendo Blockchain...';
+
+                // REDUNDÂNCIA DE RPC PARA NÃO FALHAR NO PC
+                let blockhash = null;
+                const rpcs = [
+                    'https://solana-rpc.publicnode.com',
+                    'https://api.mainnet-beta.solana.com'
+                ];
+
+                for (let rpc of rpcs) {
+                    try {
+                        const conn = new solanaWeb3.Connection(rpc, 'confirmed');
+                        const res = await conn.getLatestBlockhash('confirmed');
+                        blockhash = res.blockhash;
+                        break;
+                    } catch(e) { console.warn("Falha no RPC:", rpc); }
+                }
+
+                if (!blockhash) throw new Error("A rede Solana está sobrecarregada no momento. Tente a transferência manual.");
+
+                transaction.recentBlockhash = blockhash;
+                transaction.feePayer = fromPubkey;
+
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Aprovar na Carteira...';
+
+                let signature;
+                if (provider.isPhantom) {
+                    // Motor blindado da Phantom
+                    const res = await provider.signAndSendTransaction(transaction);
+                    signature = res.signature;
+                } else {
+                    // Motor universal para outras carteiras (Solflare, etc)
+                    const connection = new solanaWeb3.Connection(rpcs[0], 'confirmed');
+                    const signed = await provider.signTransaction(transaction);
+                    signature = await connection.sendRawTransaction(signed.serialize());
+                }
+
+                btn.innerHTML = '<i class="fas fa-check"></i> Pago!';
+
+                // Manda pro servidor sozinho
+                document.getElementById('solTxidInput').value = signature;
+                validarSolana();
+
+            } catch (err) {
+                console.error("Erro na Web3:", err);
+                document.getElementById('btnWeb3Pay').innerHTML = `<i class="fas fa-wallet text-xl"></i> <span data-i18n="sol_btn_auto">${i18n[currentLang].sol_btn_auto}</span>`;
+                Swal.fire('Falha na Transação', err.message || 'A operação foi cancelada pela carteira.', 'error');
+            }
+        }
+
+        // FUNÇÃO RADAR: Fica olhando a blockchain para capturar a transação do celular
+        function iniciarRadarSolanaPay(referencePublicKey) {
+            if(pollerSolana) clearInterval(pollerSolana);
+
+            const connection = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+            let tentativas = 0;
+
+            pollerSolana = setInterval(async () => {
+                tentativas++;
+                try {
+                    // Busca se a blockchain registrou a Hash usando a etiqueta de referência
+                    const signatures = await connection.getSignaturesForAddress(referencePublicKey, { limit: 1 });
+
+                    if (signatures && signatures.length > 0) {
+                        clearInterval(pollerSolana);
+                        Swal.close();
+                        document.getElementById('btnWeb3Pay').innerHTML = '<i class="fas fa-check"></i> Pago!';
+
+                        // Joga a Hash no campo manual silenciosamente e clica em Validar
+                        document.getElementById('solTxidInput').value = signatures[0].signature;
+                        validarSolana();
+                    }
+                } catch (e) {}
+
+                // Timeout após 5 minutos (100 * 3s)
+                if (tentativas > 100) {
+                    clearInterval(pollerSolana);
+                    Swal.close();
+                    document.getElementById('btnWeb3Pay').innerHTML = `<i class="fas fa-wallet text-xl"></i> <span data-i18n="sol_btn_auto">${i18n[currentLang].sol_btn_auto}</span>`;
+                    Swal.fire('Tempo Esgotado', 'Não detectamos o pagamento automático. Se os fundos já saíram da sua carteira, copie a Hash (TXID) lá no seu aplicativo e cole na opção manual abaixo.', 'warning');
+                }
+            }, 3000);
+        }
+
+        async function validarSolana() {
+            if(pollerSolana) clearInterval(pollerSolana); // Desliga o radar se validar
+
+            const rawTxid = document.getElementById('solTxidInput').value.trim();
+            if (!rawTxid) return Swal.fire('Atenção', 'Cole a Hash (TXID) da transação.', 'warning');
+
+            let txid = rawTxid;
+            if (txid.includes('/tx/')) { txid = txid.split('/tx/')[1].split('?')[0].split('/')[0]; }
+            if (txid.length < 60) return Swal.fire('Atenção', 'Hash inválida. Verifique o código copiado.', 'warning');
+
+            const btn = document.getElementById('btnValidarSolana');
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Auditando Blockchain...';
+            btn.disabled = true;
+
+            try {
+                const token = localStorage.getItem('ps_investor_token');
+                const response = await fetch('/api/public/validate-solana', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ txid: txid, presale_id: dadosCampanha.id })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.sucesso) {
+                    fecharModalSolana();
+                    Swal.fire({ icon: 'success', title: 'Pagamento Validado!', text: data.mensagem, confirmButtonColor: '#10b981', customClass: { popup: 'rounded-2xl shadow-xl' } })
+                    .then(() => { window.location.reload(); });
+                } else {
+                    Swal.fire('Atenção', data.erro || 'Falha na validação.', 'warning');
+                }
+            } catch (error) { Swal.fire('Erro', 'Falha ao auditar. Verifique sua conexão.', 'error'); }
+
+            btn.innerHTML = `<span data-i18n="sol_btn_validate">${i18n[currentLang].sol_btn_validate}</span> <i class="fas fa-check-circle"></i>`;
+            btn.disabled = false;
+        }
+
+        // ==========================================
+        // FLUXO PIX
+        // ==========================================
+        let pollingInterval = null;
+        let currentTxId = null;
+
+        function abrirModalPix(base64, copiaCola, txId) {
+            currentTxId = txId;
+            document.getElementById('pixQrCodeImage').src = `data:image/jpeg;base64,${base64}`;
+            document.getElementById('pixCopiaCola').value = copiaCola;
+
+            const modal = document.getElementById('modalPix');
+            const content = document.getElementById('modalPixContent');
+
+            modal.classList.remove('hidden');
+            setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
+            pollingInterval = setInterval(verificarStatusPagamento, 3000);
+        }
+
+        function fecharModalPix() {
+            clearInterval(pollingInterval); currentTxId = null;
+            const modal = document.getElementById('modalPix'); const content = document.getElementById('modalPixContent');
+            modal.classList.add('opacity-0'); content.classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); }, 300);
+        }
+
+        window.copiarPix = function() {
+            const copyText = document.getElementById("pixCopiaCola");
+            copyText.select(); navigator.clipboard.writeText(copyText.value).then(() => {
+                Swal.fire({ icon: 'success', title: 'Copiado!', toast: true, position: 'top-end', showConfirmButton: false, timer: 4000 });
+            });
+        }
+
+        async function verificarStatusPagamento() {
+            if(!currentTxId) return;
+            try {
+                const res = await fetch(`/api/public/transactions/${currentTxId}/status`);
+                if(res.ok) {
+                    const data = await res.json();
+                    if(data.status === 'concluida') {
+                        clearInterval(pollingInterval); fecharModalPix();
+                        Swal.fire({ icon: 'success', title: 'Pagamento Confirmado!', text: 'Seus tokens foram alocados na sua carteira.', confirmButtonColor: '#10b981' })
+                        .then(() => { window.location.reload(); });
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function gerarPagamento() {
+            const btn = document.getElementById('btnCheckout');
+            const inputVal = parseFloat(document.getElementById('inputAmount').value);
+
+            if (!inputVal || inputVal <= 0 || !dadosCampanha) return;
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> GERANDO CÓDIGO...';
+            btn.disabled = true;
+
+            try {
+                const token = localStorage.getItem('ps_investor_token');
+                const response = await fetch('/api/public/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ presale_id: dadosCampanha.id, amount_usd: inputVal, payment_method: metodoSelecionado })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.sucesso) {
+                    if (data.is_pix) {
+                        abrirModalPix(data.qr_code_base64, data.qr_code, data.tx_id);
+                    } else if (data.is_crypto) {
+                        abrirModalSolana(data.dev_wallet, data.amount_sol);
+                    }
+                } else {
+                    Swal.fire('Atenção', data.erro || 'Falha ao processar pagamento.', 'warning');
+                }
+            } catch (error) { Swal.fire('Erro', 'Sem comunicação com o servidor.', 'error'); }
+
+            btn.innerHTML = `<span data-i18n="sim_btn_checkout">${i18n[currentLang].sim_btn_checkout}</span> <i class="fas fa-lock"></i>`;
+            btn.disabled = false;
+        }
+
+        async function carregarMinhasCompras() {
+            try {
+                const token = localStorage.getItem('ps_investor_token');
+                const res = await fetch('/api/public/my-purchases', { headers: { 'Authorization': `Bearer ${token}` } });
+
+                if(!res.ok) return;
+
+                const compras = await res.json();
+                const grid = document.getElementById('gridHistorico');
+                grid.innerHTML = '';
+
+                if(compras.length === 0) {
+                    grid.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500 font-bold" data-i18n="no_purchases">${i18n[currentLang].no_purchases}</td></tr>`;
+                    document.getElementById('historicoArea').classList.remove('hidden');
+                    return;
+                }
+
+                compras.forEach(c => {
+                    let statusBadge = '';
+                    if(c.status === 'concluida') statusBadge = `<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px] font-black uppercase"><i class="fas fa-check mr-1"></i> ${i18n[currentLang].status_completed}</span>`;
+                    else if(c.status === 'pendente') statusBadge = `<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-black uppercase"><i class="fas fa-clock mr-1"></i> ${i18n[currentLang].status_pending}</span>`;
+                    else statusBadge = `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-[10px] font-black uppercase"><i class="fas fa-times mr-1"></i> ${i18n[currentLang].status_failed}</span>`;
+
+                    let hashLink = '-';
+                    if (c.tx_hash) {
+                        const hashShort = c.tx_hash.substring(0,6) + '...' + c.tx_hash.slice(-4);
+                        hashLink = `<a href="https://solscan.io/tx/${c.tx_hash}" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline font-mono font-bold text-[11px] bg-blue-50 px-2 py-1 rounded transition whitespace-nowrap"><i class="fas fa-external-link-alt text-[9px] mr-1"></i>${hashShort}</a>`;
+                    } else if (c.status === 'concluida') {
+                        hashLink = `<span class="text-slate-400 text-[10px] italic">Processando...</span>`;
+                    }
+
+                    let valorPagoDisplay = '';
+                    if (c.payment_method === 'solana') {
+                        valorPagoDisplay = `<div class="flex flex-col"><span class="text-slate-700 font-mono">$ ${c.amount_brl.toFixed(2)}</span><span class="text-[9px] text-purple-500 font-bold uppercase">USD (Via Solana)</span></div>`;
+                    } else {
+                        valorPagoDisplay = `<div class="flex flex-col"><span class="text-slate-700 font-mono">R$ ${c.amount_brl.toFixed(2)}</span><span class="text-[9px] text-emerald-500 font-bold uppercase">BRL (Via PIX)</span></div>`;
+                    }
+
+                    const date = new Date(c.created_at).toLocaleDateString(currentLang === 'pt' ? 'pt-BR' : 'en-US');
+
+                    grid.innerHTML += `
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="p-4 text-slate-500 text-xs font-bold whitespace-nowrap">${date}</td>
+                            <td class="p-4">
+                                <div class="flex items-center gap-2">
+                                    <img src="${c.logo_url}" class="w-6 h-6 rounded-full object-cover border border-slate-200">
+                                    <span class="font-black text-slate-800">${c.symbol}</span>
+                                </div>
+                            </td>
+                            <td class="p-4 font-black whitespace-nowrap">${valorPagoDisplay}</td>
+                            <td class="p-4 font-black text-emerald-600 whitespace-nowrap">+ ${formatarInteiro(c.amount_tokens)}</td>
+                            <td class="p-4 whitespace-nowrap">${statusBadge}</td>
+                            <td class="p-4">${hashLink}</td>
+                        </tr>
+                    `;
+                });
+
+                document.getElementById('historicoArea').classList.remove('hidden');
+
+            } catch(e) { console.error("Erro ao carregar histórico", e); }
+        }
+    </script>
+</body>
+</html>
