@@ -546,44 +546,23 @@
 
                     // Formata a URL no padrão universal Solana Pay
                     const solanaUrl = `solana:${destWallet}?amount=${amountStr}&reference=${reference.toBase58()}&label=MultiToken`;
-                    const urlEncoded = encodeURIComponent(solanaUrl);
+
+                    // Chama a App da Carteira padrão definida pelo SO para o protocolo solana:
+                    window.location.href = solanaUrl;
 
                     Swal.fire({
-                        title: 'Escolha sua Carteira',
-                        html: `Qual aplicativo você deseja usar para o pagamento?`,
-                        showDenyButton: true,
-                        showCancelButton: true,
-                        confirmButtonText: '<img src="https://phantom.app/img/phantom-logo.svg" style="width: 20px; display: inline; margin-right: 5px; filter: brightness(0) invert(1);"> Phantom',
-                        confirmButtonColor: '#ab9ff2',
-                        denyButtonText: '<img src="https://solflare.com/assets/logo.svg" style="width: 20px; display: inline; margin-right: 5px; filter: brightness(0) invert(1);"> Solflare',
-                        denyButtonColor: '#fc7b22',
-                        cancelButtonText: 'Outra',
-                        cancelButtonColor: '#475569',
-                        customClass: { actions: 'flex flex-col gap-2 w-full' }
-                    }).then((result) => {
-                        let finalUrl = solanaUrl; // Default app handler
-
-                        if (result.isConfirmed) {
-                            finalUrl = `https://phantom.app/ul/v1/pay?url=${urlEncoded}`;
-                        } else if (result.isDenied) {
-                            finalUrl = `https://solflare.com/ul/v1/pay?url=${urlEncoded}`;
-                        }
-
-                        window.location.href = finalUrl;
-
-                        Swal.fire({
-                            title: 'Aguardando Pagamento',
-                            html: `Complete a transação no seu aplicativo. O valor já estará preenchido.<br><br><span class="text-xs text-slate-500 font-bold">Após aprovar, volte para esta tela!</span>`,
-                            icon: 'info',
-                            showConfirmButton: false,
-                            allowOutsideClick: false,
-                            didOpen: () => { Swal.showLoading() }
-                        });
-
-                        btn.innerHTML = '<i class="fas fa-radar fa-spin"></i> Aguardando Blockchain...';
-                        iniciarRadarSolanaPay(reference);
+                        title: 'Aguardando Pagamento',
+                        html: `Sua carteira padrão será aberta. Complete a transação nela. O valor já estará preenchido.<br><br><span class="text-xs text-slate-500 font-bold">Após aprovar, volte para esta tela!</span>`,
+                        icon: 'info',
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading() }
                     });
 
+                    btn.innerHTML = '<i class="fas fa-radar fa-spin"></i> Aguardando Blockchain...';
+
+                    // Liga o Radar invisível
+                    iniciarRadarSolanaPay(reference);
                     return;
                 }
 
