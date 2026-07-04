@@ -542,27 +542,48 @@
                     const reference = solanaWeb3.Keypair.generate().publicKey;
 
                     // Formata o valor rigorosamente em decimal para evitar que as wallets leiam "0" em SOs específicos
-                    const amountStr = amountSol.toFixed(9).replace(/\.?0+$/, ''); // Remove zeros à direita indesejados mas deixa o decimal válido
+                    const amountStr = amountSol.toFixed(9).replace(/\.?0+$/, '');
 
-                    // Formata a URL no padrão universal Solana Pay (Abre qualquer App Web3 instalado)
+                    // Formata a URL no padrão universal Solana Pay
                     const solanaUrl = `solana:${destWallet}?amount=${amountStr}&reference=${reference.toBase58()}&label=MultiToken`;
-
-                    // Chama a App da Carteira pelo SO
-                    window.location.href = solanaUrl;
+                    const urlEncoded = encodeURIComponent(solanaUrl);
 
                     Swal.fire({
-                        title: 'Aguardando Pagamento',
-                        html: `Complete a transação no aplicativo da sua carteira (Phantom, Solflare, etc.). O valor já estará preenchido.<br><br><span class="text-xs text-slate-500 font-bold">Após aprovar, volte para esta tela!</span>`,
-                        icon: 'info',
-                        showConfirmButton: false,
-                        allowOutsideClick: false,
-                        didOpen: () => { Swal.showLoading() }
+                        title: 'Escolha sua Carteira',
+                        html: `Qual aplicativo você deseja usar para o pagamento?`,
+                        showDenyButton: true,
+                        showCancelButton: true,
+                        confirmButtonText: '<img src="https://phantom.app/img/phantom-logo.svg" style="width: 20px; display: inline; margin-right: 5px; filter: brightness(0) invert(1);"> Phantom',
+                        confirmButtonColor: '#ab9ff2',
+                        denyButtonText: '<img src="https://solflare.com/assets/logo.svg" style="width: 20px; display: inline; margin-right: 5px; filter: brightness(0) invert(1);"> Solflare',
+                        denyButtonColor: '#fc7b22',
+                        cancelButtonText: 'Outra',
+                        cancelButtonColor: '#475569',
+                        customClass: { actions: 'flex flex-col gap-2 w-full' }
+                    }).then((result) => {
+                        let finalUrl = solanaUrl; // Default app handler
+
+                        if (result.isConfirmed) {
+                            finalUrl = `https://phantom.app/ul/v1/pay?url=${urlEncoded}`;
+                        } else if (result.isDenied) {
+                            finalUrl = `https://solflare.com/ul/v1/pay?url=${urlEncoded}`;
+                        }
+
+                        window.location.href = finalUrl;
+
+                        Swal.fire({
+                            title: 'Aguardando Pagamento',
+                            html: `Complete a transação no seu aplicativo. O valor já estará preenchido.<br><br><span class="text-xs text-slate-500 font-bold">Após aprovar, volte para esta tela!</span>`,
+                            icon: 'info',
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            didOpen: () => { Swal.showLoading() }
+                        });
+
+                        btn.innerHTML = '<i class="fas fa-radar fa-spin"></i> Aguardando Blockchain...';
+                        iniciarRadarSolanaPay(reference);
                     });
 
-                    btn.innerHTML = '<i class="fas fa-radar fa-spin"></i> Aguardando Blockchain...';
-
-                    // Liga o Radar invisível
-                    iniciarRadarSolanaPay(reference);
                     return;
                 }
 
@@ -679,6 +700,8 @@
             if (txid.length < 60) return Swal.fire('Atenção', 'Hash inválida. Verifique o código copiado.', 'warning');
 
             const btn = document.getElementById('btnValidarSolana');
+            const btnFastPay = document.getElementById('btnWeb3Pay');
+
             btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Auditando Blockchain...';
             btn.disabled = true;
 
@@ -697,8 +720,13 @@
                     .then(() => { window.location.reload(); });
                 } else {
                     Swal.fire('Atenção', data.erro || 'Falha na validação.', 'warning');
+                    // Reseta o botão de PAGO! no mobile/pc se houver falha de fundos na blockchain, pra evitar confusão visual
+                    btnFastPay.innerHTML = `<i class="fas fa-wallet text-xl"></i> <span data-i18n="sol_btn_auto">${i18n[currentLang].sol_btn_auto}</span>`;
                 }
-            } catch (error) { Swal.fire('Erro', 'Falha ao auditar. Verifique sua conexão.', 'error'); }
+            } catch (error) {
+                Swal.fire('Erro', 'Falha ao auditar. Verifique sua conexão.', 'error');
+                btnFastPay.innerHTML = `<i class="fas fa-wallet text-xl"></i> <span data-i18n="sol_btn_auto">${i18n[currentLang].sol_btn_auto}</span>`;
+            }
 
             btn.innerHTML = `<span data-i18n="sol_btn_validate">${i18n[currentLang].sol_btn_validate}</span> <i class="fas fa-check-circle"></i>`;
             btn.disabled = false;
