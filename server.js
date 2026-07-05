@@ -346,7 +346,12 @@ app.post('/api/admin/force-validate', verifyAdmin, async (req, res) => {
         const solPriceUsd = await getCotacaoSolana();
         const amountUsdRecebido = amountSolRecebido * solPriceUsd;
 
-        const tokensBase = amountUsdRecebido / presale.price_usd;
+        const settings = await db.all("SELECT * FROM platform_settings");
+        const config = {}; settings.forEach(s => config[s.key] = s.value);
+        const feePercent = parseFloat(config.taxa_pix || 0);
+        const netUsd = amountUsdRecebido - (amountUsdRecebido * (feePercent / 100));
+
+        const tokensBase = netUsd / presale.price_usd;
         const totalTokens = Math.floor(tokensBase + ((tokensBase * presale.bonus_percent) / 100));
 
         const userExist = await db.get("SELECT wallet FROM users WHERE wallet = ?", [wallet]);
@@ -547,7 +552,12 @@ app.post('/api/public/validate-solana', verifyInvestor, async (req, res) => {
             const solPriceUsd = await getCotacaoSolana();
             const amountUsdRecebido = amountSolRecebido * solPriceUsd;
 
-            const tokensBase = amountUsdRecebido / presale.price_usd;
+            const settings = await db.all("SELECT * FROM platform_settings");
+            const config = {}; settings.forEach(s => config[s.key] = s.value);
+            const feePercent = parseFloat(config.taxa_pix || 0);
+            const netUsd = amountUsdRecebido - (amountUsdRecebido * (feePercent / 100));
+
+            const tokensBase = netUsd / presale.price_usd;
             const totalTokens = Math.floor(tokensBase + ((tokensBase * presale.bonus_percent) / 100));
 
             const newId = uuidv4();

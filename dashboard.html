@@ -476,7 +476,10 @@
             }
 
             let feePercent = 0;
-            if (metodoSelecionado === 'pix') feePercent = parseFloat(platformSettings.taxa_pix || 0);
+            // Apply the same fee for both pix and solana
+            if (metodoSelecionado === 'pix' || metodoSelecionado === 'solana') {
+                feePercent = parseFloat(platformSettings.taxa_pix || 0);
+            }
 
             const netUsd = inputVal - (inputVal * (feePercent / 100));
             const tokensBase = netUsd / dadosCampanha.price_usd;
