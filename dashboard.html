@@ -750,6 +750,7 @@
                 }
             } catch (error) {
                 Swal.fire('Erro', 'Falha ao auditar. Verifique sua conexão.', 'error');
+                isValidating = false;
                 btnFastPay.innerHTML = `<i class="fas fa-wallet text-xl"></i> <span data-i18n="sol_btn_auto">${i18n[currentLang].sol_btn_auto}</span>`;
             }
 

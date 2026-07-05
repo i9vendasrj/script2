@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiToken | Portal de Pré-Vendas Exclusivas</title>
+    <meta name="description" content="Portal oficial de pré-vendas (Private Sale) do ecossistema MultiToken. Adquira tokens antes do lançamento.">
+    <link rel="icon" type="image/x-icon" href="https://multitoken.top/images/favicon.ico">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; overflow-x: hidden; }
+        .bg-animated { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-image: url('https://multitoken.top/images/background2.jpg'); background-size: cover; background-position: center; z-index: -2; animation: breathe 25s ease-in-out infinite alternate; }
+        @keyframes breathe { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
+        .bg-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; z-index: -1; }
+        .glass-card { background: rgba(255, 255, 255, 0.85); border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .social-btn { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: #ffffff; border: 1px solid #e2e8f0; font-size: 1.4rem; text-decoration: none; padding: 0; }
+        .social-btn:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        .btn-tg { color: #0088cc; } .btn-tg:hover { background: #0088cc; color: white; border-color: #0088cc; }
+        .btn-x { color: #0f1419; } .btn-x:hover { background: #0f1419; color: white; border-color: #0f1419; }
+        .btn-ig { color: #e1306c; } .btn-ig:hover { background: #e1306c; color: white; border-color: #e1306c; }
+        .lang-btn { padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 800; color: #64748b; cursor: pointer; transition: all 0.2s; border: none; background: transparent; }
+        .lang-btn.active { background: #1e293b; color: white; }
+
+        /* Modal de Login */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content { transform: scale(0.95); transition: transform 0.3s ease; }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        .input-form { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #cbd5e1; outline: none; transition: 0.3s; color: #334155; font-size: 0.95rem; font-weight: 600; background: rgba(255,255,255,0.9); }
+        .input-form:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+    </style>
+</head>
+<body class="min-h-screen relative flex flex-col items-center justify-between">
+
+    <div class="bg-animated"></div>
+    <div class="bg-overlay"></div>
+
+    <!-- HEADER / CONTROLES TOPO DIREITA -->
+    <div class="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 flex items-center gap-3">
+        <div class="bg-white/90 border border-slate-200 rounded-full p-1 flex items-center shadow-sm backdrop-blur-md">
+            <button onclick="setLanguage('pt')" id="btn-pt" class="lang-btn active">PT</button>
+            <button onclick="setLanguage('en')" id="btn-en" class="lang-btn">EN</button>
+        </div>
+
+        <!-- Área Dinâmica de Login/Sessão -->
+        <div id="auth-area">
+            <button onclick="abrirModalLogin()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-full transition-colors shadow-lg text-xs uppercase tracking-wide flex items-center gap-2">
+                <i class="fas fa-wallet"></i> <span data-i18n="btn_connect">Conectar</span>
+            </button>
+        </div>
+    </div>
+
+    <main class="w-full max-w-6xl mx-auto px-4 pt-20 pb-12 sm:py-16 flex flex-col items-center flex-grow justify-start space-y-10 relative z-10">
+        <div class="text-center w-full flex flex-col items-center">
+            <div class="glass-card rounded-[2rem] p-6 sm:p-8 inline-block shadow-2xl mb-6 border-b-4 border-b-blue-500 transform transition-transform duration-500 hover:-translate-y-2 relative group cursor-pointer" onclick="window.location.reload()">
+                <img src="https://multitoken.top/images/logomultitoken.png" alt="MultiToken Logo" class="w-48 sm:w-60 h-auto drop-shadow-xl transform group-hover:scale-105 transition-transform duration-500 mx-auto">
+            </div>
+            <div class="flex items-center justify-center gap-4 mb-8">
+                <a href="https://t.me/multitokentop" target="_blank" class="social-btn btn-tg" title="Telegram"><i class="fab fa-telegram-plane"></i></a>
+                <a href="https://x.com/multitokenswap" target="_blank" class="social-btn btn-x" title="X / Twitter"><i class="fa-brands fa-x-twitter"></i></a>
+                <a href="https://www.instagram.com/multitokentop" target="_blank" class="social-btn btn-ig" title="Instagram"><i class="fab fa-instagram"></i></a>
+            </div>
+            <span data-i18n="badge_eco" class="inline-block py-1 px-3 rounded-full bg-blue-100 text-blue-800 border border-blue-200 text-[10px] sm:text-xs font-bold tracking-widest uppercase mb-4 shadow-sm">Ecossistema Solana</span>
+            <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-800 mb-4 tracking-tight">
+                <span data-i18n="welcome">Portal de</span> <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-emerald-500" data-i18n="presales">Pré-Vendas</span>
+            </h1>
+            <p data-i18n="subtitle" class="text-slate-600 text-sm sm:text-base font-semibold max-w-2xl leading-relaxed mb-8">Adquira tokens com preços promocionais antes do lançamento oficial na Dex. Compre com PIX ou Solana e receba na hora seus tokens.</p>
+        </div>
+
+        <div class="w-full max-w-5xl mx-auto flex items-center justify-center gap-3 mt-4 mb-2">
+            <div class="h-px bg-slate-300 flex-grow"></div>
+            <div class="text-slate-500 font-black uppercase tracking-widest text-sm flex items-center gap-2"><i class="fas fa-fire text-orange-500"></i> <span data-i18n="active_offers">Ofertas Ativas</span></div>
+            <div class="h-px bg-slate-300 flex-grow"></div>
+        </div>
+
+        <!-- GRID DE CAMPANHAS DINÂMICAS -->
+        <div id="gridCampanhas" class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 w-full max-w-5xl mx-auto"></div>
+    </main>
+
+    <div class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold py-2 overflow-hidden whitespace-nowrap mt-6 relative z-10 shadow-lg">
+        <a href="https://multitoken.top" target="_blank" class="block w-full hover:opacity-90 transition-opacity">
+            <marquee behavior="scroll" direction="left" class="text-sm tracking-widest uppercase">
+                🚀 CONHEÇA O PROJETO MULTITOKEN! CLIQUE AQUI PARA ACESSAR NOSSO SITE OFICIAL E EXPLORAR NOSSO ECOSSISTEMA INOVADOR. 🚀
+            </marquee>
+        </a>
+    </div>
+
+    <footer class="w-full bg-white/70 border-t border-slate-200 py-8 relative z-10 backdrop-blur-md">
+        <div class="max-w-5xl mx-auto px-4 flex flex-col items-center">
+            <h3 data-i18n="community_title" class="text-slate-700 font-bold text-sm mb-4 uppercase tracking-wider">Comunidade Oficial</h3>
+            <div class="flex gap-4 mb-6">
+                <a href="https://t.me/multitokentop" target="_blank" class="social-btn btn-tg" title="Telegram"><i class="fab fa-telegram-plane"></i></a>
+                <a href="https://x.com/multitokenswap" target="_blank" class="social-btn btn-x" title="X / Twitter"><i class="fa-brands fa-x-twitter"></i></a>
+                <a href="https://www.instagram.com/multitokentop" target="_blank" class="social-btn btn-ig" title="Instagram"><i class="fab fa-instagram"></i></a>
+            </div>
+            <p class="text-slate-500 text-[11px] font-semibold text-center leading-relaxed">
+                <a href="https://multitoken.top" target="_blank" class="text-indigo-600 hover:text-indigo-800 underline block mb-2 font-bold text-sm">Visite: multitoken.top</a>
+                &copy; 2026 Ecossistema MultiToken ($MITK). <span data-i18n="rights">Todos os direitos reservados.</span><br>
+                <span data-i18n="developed_on">Desenvolvido e assegurado na Blockchain Solana.</span>
+            </p>
+        </div>
+    </footer>
+
+    <!-- ========================================== -->
+    <!-- MODAL DE LOGIN WEB2.5 -->
+    <!-- ========================================== -->
+    <div id="modalLogin" class="modal-overlay">
+        <div class="glass-card modal-content rounded-[24px] p-8 w-full max-w-md mx-4 relative border-t-4 border-t-blue-500 shadow-2xl">
+            <button onclick="fecharModalLogin()" class="absolute top-5 right-5 text-slate-400 hover:text-red-500 transition text-xl"><i class="fas fa-times"></i></button>
+
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 shadow-inner"><i class="fas fa-shield-alt"></i></div>
+                <h3 class="text-2xl font-black text-slate-800 tracking-tight" data-i18n="login_title">Acesso Seguro</h3>
+                <p class="text-xs text-slate-500 font-semibold mt-2" data-i18n="login_subtitle">Insira sua carteira Solana e um PIN. Se for seu primeiro acesso, a conta será criada automaticamente.</p>
+            </div>
+
+            <form id="formAuth" onsubmit="efetuarLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1" data-i18n="lbl_wallet">Sua Carteira Solana</label>
+                    <input type="text" id="auth_wallet" class="input-form font-mono text-sm" placeholder="Ex: 9HH2...ox2Dg" required minlength="32" maxlength="44">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1" data-i18n="lbl_pin">PIN de Segurança (Min. 4 dígitos)</label>
+                    <div class="relative">
+                        <input type="password" id="auth_pin" class="input-form tracking-widest text-lg" placeholder="••••••••" required minlength="4">
+                        <button type="button" onclick="togglePin()" class="absolute right-4 top-3.5 text-slate-400 hover:text-blue-500"><i class="fas fa-eye" id="eye-icon"></i></button>
+                    </div>
+                </div>
+                <button type="submit" id="btnSubmitLogin" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl transition-colors shadow-lg uppercase tracking-wider mt-2 flex items-center justify-center gap-2">
+                    <span data-i18n="btn_enter">Acessar / Criar Conta</span> <i class="fas fa-arrow-right"></i>
+                </button>
+                <div id="loginErrorMsg" class="hidden text-center text-red-500 text-xs font-bold bg-red-50 py-2 rounded-lg mt-3 border border-red-100"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. INTERNACIONALIZAÇÃO (i18n)
+        // ==========================================
+        const i18n = {
+            pt: {
+                btn_connect: "Conectar", badge_eco: "Ecossistema Solana", welcome: "Portal de", presales: "Pré-Vendas",
+                subtitle: "Adquira tokens com preços promocionais antes do lançamento oficial na Dex. Conecte sua carteira e invista de forma automatizada e segura.",
+                active_offers: "Ofertas Ativas", loading: "Buscando oportunidades na rede...", no_active: "Nenhuma pré-venda ativa no momento. Fique de olho!",
+                btn_buy: "PARTICIPAR AGORA", sold: "Vendido", community_title: "Comunidade Oficial", rights: "Todos os direitos reservados.", developed_on: "Desenvolvido e assegurado na Blockchain Solana.",
+                alert_copy_title: "Copiado!", alert_copy_text: "Endereço transferido para a área de transferência.",
+                login_title: "Acesso Seguro", login_subtitle: "Insira sua carteira Solana e um PIN. Se for seu primeiro acesso, a conta será criada automaticamente.",
+                lbl_wallet: "Sua Carteira Solana (Recebimento)", lbl_pin: "PIN de Segurança (Min. 4 dígitos)", btn_enter: "Acessar / Criar Conta",
+                logout: "Sair"
+            },
+            en: {
+                btn_connect: "Connect", badge_eco: "Solana Ecosystem", welcome: "Exclusive", presales: "Presale Portal",
+                subtitle: "Acquire tokens at promotional prices before the official Dex launch. Invest automatically and securely.",
+                active_offers: "Active Offers", loading: "Scanning network for opportunities...", no_active: "No active presales at the moment. Stay tuned!",
+                btn_buy: "JOIN PRESALE", sold: "Sold", community_title: "Official Community", rights: "All rights reserved.", developed_on: "Developed and secured on the Solana Blockchain.",
+                alert_copy_title: "Copied!", alert_copy_text: "Address copied to clipboard.",
+                login_title: "Secure Access", login_subtitle: "Enter your Solana wallet and a PIN. If it's your first time, the account will be created automatically.",
+                lbl_wallet: "Your Solana Wallet (Receiving)", lbl_pin: "Security PIN (Min. 4 digits)", btn_enter: "Access / Create Account",
+                logout: "Logout"
+            }
+        };
+
+        let currentLang = localStorage.getItem('mitk_lang') || 'pt';
+
+        function setLanguage(lang) {
+            currentLang = lang; localStorage.setItem('mitk_lang', lang);
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n'); if (i18n[lang][key]) el.innerHTML = i18n[lang][key];
+            });
+            document.getElementById('btn-pt').classList.remove('active'); document.getElementById('btn-en').classList.remove('active');
+            document.getElementById('btn-' + lang).classList.add('active');
+
+            verificarSessao(); // Atualiza os botões do Header
+            carregarVitrine(); // Recarrega os textos dos cards
+        }
+
+        window.copiarContrato = function(endereco) {
+            navigator.clipboard.writeText(endereco).then(() => {
+                Swal.fire({ icon: 'success', title: i18n[currentLang].alert_copy_title, text: i18n[currentLang].alert_copy_text, toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, customClass: { popup: 'rounded-xl shadow-md border border-emerald-100' } });
+            });
+        }
+
+        // ==========================================
+        // 2. LÓGICA DE SESSÃO E LOGIN
+        // ==========================================
+        function verificarSessao() {
+            const token = localStorage.getItem('ps_investor_token');
+            const wallet = localStorage.getItem('ps_investor_wallet');
+            const authArea = document.getElementById('auth-area');
+
+            if (token && wallet) {
+                // Usuário Logado: Mostra carteira truncada e botão de sair
+                const shortWallet = wallet.substring(0,4) + '...' + wallet.slice(-4);
+                authArea.innerHTML = `
+                    <div class="flex items-center gap-2 bg-white/90 border border-slate-200 rounded-full p-1 pl-4 shadow-sm backdrop-blur-md">
+                        <span class="text-xs font-mono font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-user-shield text-emerald-500"></i> ${shortWallet}</span>
+                        <button onclick="fazerLogout()" class="bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors" title="${i18n[currentLang].logout}">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                `;
+            } else {
+                // Usuário Deslogado: Mostra botão conectar
+                authArea.innerHTML = `
+                    <button onclick="abrirModalLogin()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-full transition-colors shadow-lg text-xs uppercase tracking-wide flex items-center gap-2">
+                        <i class="fas fa-wallet"></i> <span data-i18n="btn_connect">${i18n[currentLang].btn_connect}</span>
+                    </button>
+                `;
+            }
+        }
+
+        function fazerLogout() {
+            localStorage.removeItem('ps_investor_token');
+            localStorage.removeItem('ps_investor_wallet');
+            verificarSessao();
+        }
+
+        function abrirModalLogin() { document.getElementById('modalLogin').classList.add('active'); }
+        function fecharModalLogin() {
+            document.getElementById('modalLogin').classList.remove('active');
+            document.getElementById('loginErrorMsg').classList.add('hidden');
+        }
+        function togglePin() {
+            const input = document.getElementById('auth_pin');
+            const icon = document.getElementById('eye-icon');
+            if(input.type === 'password') { input.type = 'text'; icon.classList.replace('fa-eye', 'fa-eye-slash'); }
+            else { input.type = 'password'; icon.classList.replace('fa-eye-slash', 'fa-eye'); }
+        }
+
+        async function efetuarLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmitLogin');
+            const erroMsg = document.getElementById('loginErrorMsg');
+            const wallet = document.getElementById('auth_wallet').value.trim();
+            const pin = document.getElementById('auth_pin').value;
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            erroMsg.classList.add('hidden');
+
+            try {
+                const res = await fetch('/api/public/auth', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet, pin })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.sucesso) {
+                    localStorage.setItem('ps_investor_token', data.token);
+                    localStorage.setItem('ps_investor_wallet', data.wallet);
+                    fecharModalLogin();
+                    verificarSessao();
+                    document.getElementById('formAuth').reset();
+                    // Se estiver logando após clicar no card, mandamos pro dashboard
+                    if(window.pendingCampanhaId) acionarCompra(window.pendingCampanhaId);
+                } else {
+                    erroMsg.innerHTML = data.erro || "Erro de autenticação";
+                    erroMsg.classList.remove('hidden');
+                }
+            } catch (error) {
+                erroMsg.innerHTML = "Erro de conexão com o servidor.";
+                erroMsg.classList.remove('hidden');
+            }
+            btn.innerHTML = `<span data-i18n="btn_enter">${i18n[currentLang].btn_enter}</span> <i class="fas fa-arrow-right"></i>`;
+        }
+
+        // ==========================================
+        // 3. CARREGAMENTO DA VITRINE E FORMATAÇÃO
+        // ==========================================
+        window.pendingCampanhaId = null;
+
+        // Função para formatar os números na barra de progresso
+        function formatarInteiro(valor) {
+            return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.floor(valor));
+        }
+
+        function acionarCompra(campanhaId) {
+            const token = localStorage.getItem('ps_investor_token');
+            if(token) {
+                // Usuário logado: Redireciona para o Dashboard passando o ID da campanha na URL
+                window.location.href = `/dashboard.html?id=${campanhaId}`;
+            } else {
+                // Usuário deslogado: Salva intenção e abre login
+                window.pendingCampanhaId = campanhaId;
+                abrirModalLogin();
+            }
+        }
+
+        async function carregarVitrine() {
+            const grid = document.getElementById('gridCampanhas');
+            try {
+                const res = await fetch('/api/public/presales');
+                const campanhas = await res.json();
+                grid.innerHTML = '';
+
+                if (campanhas.length === 0) { grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-500 font-bold"><p>${i18n[currentLang].no_active}</p></div>`; return; }
+
+                campanhas.forEach(c => {
+                    const progresso = ((c.tokens_sold / c.hardcap_tokens) * 100).toFixed(1);
+                    const badgeBonus = c.bonus_percent > 0 ? `<div class="absolute -top-3 -right-3 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[11px] font-black px-4 py-1.5 rounded-full shadow-lg border-2 border-white animate-bounce"><i class="fas fa-gift mr-1"></i>+${c.bonus_percent}% BÔNUS</div>` : '';
+
+                    const card = document.createElement('div');
+                    card.className = "glass-card rounded-[24px] p-6 sm:p-8 flex flex-col h-full transform transition duration-300 hover:-translate-y-1.5 hover:shadow-xl border-b-4 border-b-blue-500 relative";
+
+                    card.innerHTML = `
+                        ${badgeBonus}
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-4">
+                                <img src="${c.logo_url}" alt="${c.symbol}" class="w-20 h-20 rounded-full border border-slate-200 object-cover shadow-md bg-white">
+                                <div>
+                                    <h2 class="text-2xl font-black text-slate-800 uppercase tracking-wide">${c.symbol}</h2>
+                                    <p class="text-slate-500 font-bold text-xs">${c.name}</p>
+                                    <p class="text-[10px] text-slate-400 font-mono mt-1 bg-slate-100 px-2 py-1 rounded-md flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition" onclick="copiarContrato('${c.mint_address}')" title="Copiar Contrato">
+                                        ${c.mint_address.substring(0,6)}...${c.mint_address.slice(-4)}
+                                        <i class="fas fa-copy text-blue-500"></i>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <div class="flex gap-2">
+                                    ${c.website_url ? `<a href="${c.website_url}" target="_blank" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-blue-100 hover:text-blue-600 transition"><i class="fas fa-globe"></i></a>` : ''}
+                                    ${c.twitter_url ? `<a href="${c.twitter_url}" target="_blank" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-sky-100 hover:text-sky-500 transition"><i class="fab fa-twitter"></i></a>` : ''}
+                                </div>
+                                <div class="flex gap-2">
+                                    ${c.tg_group_url ? `<a href="${c.tg_group_url}" target="_blank" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-blue-100 hover:text-blue-500 transition"><i class="fab fa-telegram-plane"></i></a>` : ''}
+                                    ${c.discord_url ? `<a href="${c.discord_url}" target="_blank" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-indigo-100 hover:text-indigo-500 transition"><i class="fab fa-discord"></i></a>` : ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white/60 rounded-xl p-4 mb-6 border border-slate-200 text-center shadow-inner">
+                            <p class="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Preço / Price</p>
+                            <p class="text-2xl font-black text-emerald-600">$ ${c.price_usd.toFixed(8)}</p>
+                        </div>
+
+                        <div class="mb-6 flex-grow">
+                            <div class="flex justify-between text-xs font-bold mb-2">
+                                <span class="text-slate-500 uppercase tracking-wider">${i18n[currentLang].sold}</span>
+                                <span class="text-blue-600">${progresso}%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-3 mb-2 shadow-inner overflow-hidden">
+                                <div class="bg-gradient-to-r from-blue-500 to-sky-400 h-3 rounded-full relative" style="width: ${progresso}%"></div>
+                            </div>
+                            <div class="flex justify-between items-center text-[10px] text-slate-500 font-bold uppercase tracking-wide mt-2">
+                                <span>Mín: $${c.min_purchase_usd} / Máx: $${c.max_purchase_usd}</span>
+                                <span class="font-mono tracking-tight">${formatarInteiro(c.tokens_sold)} / ${formatarInteiro(c.hardcap_tokens)}</span>
+                            </div>
+                        </div>
+
+                        <button onclick="acionarCompra(${c.id})" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 px-6 rounded-xl text-center transition-all shadow-md flex items-center justify-center gap-2 uppercase tracking-wide text-xs">
+                            <span data-i18n="btn_buy">${i18n[currentLang].btn_buy}</span> <i class="fas fa-arrow-right text-xs"></i>
+                        </button>
+                    `;
+                    grid.appendChild(card);
+                });
+
+            } catch (error) { grid.innerHTML = `<div class="col-span-full text-center text-red-500 font-bold py-8">Erro de conexão.</div>`; }
+        }
+
+        window.onload = () => {
+            setLanguage(currentLang);
+            verificarSessao();
+        };
+    </script>
+</body>
+</html>
