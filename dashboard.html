@@ -638,7 +638,8 @@
         function iniciarRadarSolanaPay(referencePublicKey) {
             if(pollerSolana) clearInterval(pollerSolana);
 
-            const connection = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+            // Usamos publicnode primeiro, que tem limites muito maiores que o oficial mainnet-beta, para evitar o radar cego.
+            const connection = new solanaWeb3.Connection('https://solana-rpc.publicnode.com', 'confirmed');
             let tentativas = 0;
 
             pollerSolana = setInterval(async () => {
@@ -656,14 +657,16 @@
                         document.getElementById('solTxidInput').value = signatures[0].signature;
                         validarSolana();
                     }
-                } catch (e) {}
+                } catch (e) {
+                    // Ignora erros para continuar tentando o polling silencioso
+                }
 
                 // Timeout após 5 minutos (100 * 3s)
                 if (tentativas > 100) {
                     clearInterval(pollerSolana);
                     Swal.close();
                     document.getElementById('btnWeb3Pay').innerHTML = `<i class="fas fa-wallet text-xl"></i> <span data-i18n="sol_btn_auto">${i18n[currentLang].sol_btn_auto}</span>`;
-                    Swal.fire('Tempo Esgotado', 'Não detectamos o pagamento automático. Se os fundos já saíram da sua carteira, copie a Hash (TXID) lá no seu aplicativo e cole na opção manual abaixo.', 'warning');
+                    Swal.fire('Tempo Esgotado', 'Não detectamos o pagamento automático a tempo. Se os fundos já saíram da sua carteira, copie a Hash (TXID) no seu aplicativo e cole no campo abaixo e clique em Validar.', 'warning');
                 }
             }, 3000);
         }
@@ -698,7 +701,17 @@
                     Swal.fire({ icon: 'success', title: 'Pagamento Validado!', text: data.mensagem, confirmButtonColor: '#10b981', customClass: { popup: 'rounded-2xl shadow-xl' } })
                     .then(() => { window.location.reload(); });
                 } else {
-                    Swal.fire('Atenção', data.erro || 'Falha na validação.', 'warning');
+                    // Trata o erro específico de latência da rede (quando o block ainda não foi indexado)
+                    if (data.erro && data.erro.includes("não encontrada")) {
+                        Swal.fire({
+                            title: 'Transação Enviada!',
+                            html: `Sua transação está na rede, mas ainda não foi confirmada pelos validadores.<br><br><b>O TXID já foi colado abaixo!</b> Aguarde alguns segundos e clique em <b>Validar e Receber Tokens</b>.`,
+                            icon: 'info',
+                            confirmButtonText: 'Entendi'
+                        });
+                    } else {
+                        Swal.fire('Atenção', data.erro || 'Falha na validação.', 'warning');
+                    }
                     // Reseta o botão de PAGO! no mobile/pc se houver falha de fundos na blockchain, pra evitar confusão visual
                     btnFastPay.innerHTML = `<i class="fas fa-wallet text-xl"></i> <span data-i18n="sol_btn_auto">${i18n[currentLang].sol_btn_auto}</span>`;
                 }
