@@ -369,6 +369,7 @@
         let cotacaoDolarAtiva = 0;
         let platformSettings = { taxa_pix: 0, taxa_cartao: 0 };
         let pollerSolana = null;
+        let isValidating = false;
 
         window.onload = async () => {
             setLanguage(currentLang);
@@ -679,14 +680,16 @@
         }
 
         async function validarSolana() {
+            if (isValidating) return;
+            isValidating = true;
             if(pollerSolana) clearInterval(pollerSolana); // Desliga o radar se validar
 
             const rawTxid = document.getElementById('solTxidInput').value.trim();
-            if (!rawTxid) return Swal.fire('Atenção', 'Cole a Hash (TXID) da transação.', 'warning');
+            if (!rawTxid) { isValidating = false; return Swal.fire('Atenção', 'Cole a Hash (TXID) da transação.', 'warning'); }
 
             let txid = rawTxid;
             if (txid.includes('/tx/')) { txid = txid.split('/tx/')[1].split('?')[0].split('/')[0]; }
-            if (txid.length < 60) return Swal.fire('Atenção', 'Hash inválida. Verifique o código copiado.', 'warning');
+            if (txid.length < 60) { isValidating = false; return Swal.fire('Atenção', 'Hash inválida. Verifique o código copiado.', 'warning'); }
 
             const btn = document.getElementById('btnValidarSolana');
             const btnFastPay = document.getElementById('btnWeb3Pay');
@@ -705,6 +708,7 @@
 
                 if (response.ok && data.sucesso) {
                     fecharModalSolana();
+                    isValidating = false;
                     Swal.fire({ icon: 'success', title: 'Pagamento Validado!', text: data.mensagem, confirmButtonColor: '#10b981', customClass: { popup: 'rounded-2xl shadow-xl' } })
                     .then(() => { window.location.reload(); });
                 } else {
@@ -716,8 +720,14 @@
                             icon: 'info',
                             confirmButtonText: 'Entendi'
                         });
+                        isValidating = false;
+                        btn.innerHTML = 'Validar e Receber Tokens';
+                        btn.disabled = false;
                     } else {
                         Swal.fire('Atenção', data.erro || 'Falha na validação.', 'warning');
+                        isValidating = false;
+                        btn.innerHTML = 'Validar e Receber Tokens';
+                        btn.disabled = false;
                     }
                     // Reseta o botão de PAGO! no mobile/pc se houver falha de fundos na blockchain, pra evitar confusão visual
                     btnFastPay.innerHTML = `<i class="fas fa-wallet text-xl"></i> <span data-i18n="sol_btn_auto">${i18n[currentLang].sol_btn_auto}</span>`;
