@@ -261,8 +261,12 @@
 
             <!-- CABEÇALHO MODAL -->
             <div class="bg-slate-800 p-6 text-center text-white rounded-t-3xl border-b-4 border-purple-500">
-                <h3 class="text-xl font-black uppercase tracking-widest">Gateway Solana</h3>
-                <p class="text-xs text-slate-400 font-bold mt-1">Valor a enviar: <span id="solAmountDisplay" class="text-white font-mono"></span> SOL</p>
+                <h3 class="text-xs font-black uppercase tracking-widest text-slate-300 mb-2">Gateway Solana</h3>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Valor exato a enviar</p>
+                <div class="mt-2 bg-slate-900/50 inline-block px-6 py-2 rounded-xl border border-slate-700 shadow-inner">
+                    <span id="solAmountDisplay" class="text-3xl md:text-4xl font-black text-emerald-400 font-mono tracking-tight"></span>
+                    <span class="text-lg font-bold text-slate-300 ml-1">SOL</span>
+                </div>
             </div>
 
             <div class="p-6">
@@ -621,11 +625,14 @@
                     signature = await connection.sendRawTransaction(signed.serialize());
                 }
 
-                btn.innerHTML = '<i class="fas fa-check"></i> Pago!';
+                btn.innerHTML = '<i class="fas fa-clock fa-spin"></i> Confirmando na Rede...';
 
-                // Manda pro servidor sozinho
+                // Manda pro servidor sozinho após delay pra dar tempo do bloco fechar e o RPC Indexar (Evitar "Transação não encontrada")
                 document.getElementById('solTxidInput').value = signature;
-                validarSolana();
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Pago!';
+                    validarSolana();
+                }, 6000);
 
             } catch (err) {
                 console.error("Erro na Web3:", err);
