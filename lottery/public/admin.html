@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiToken | Painel Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <div id="loginSection" class="min-h-screen flex items-center justify-center">
+        <div class="bg-white p-8 rounded-xl shadow-md w-96">
+            <h2 class="text-2xl font-bold mb-6 text-center">Admin Login</h2>
+            <input type="text" id="adminUser" class="w-full p-2 mb-4 border rounded" placeholder="Usuário">
+            <input type="password" id="adminPass" class="w-full p-2 mb-6 border rounded" placeholder="Senha">
+            <button onclick="adminLogin()" class="w-full bg-blue-600 text-white font-bold py-2 rounded">Entrar</button>
+        </div>
+    </div>
+
+    <div id="adminPanel" class="hidden max-w-6xl mx-auto py-10 px-4">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold">Painel Administrativo</h1>
+            <button onclick="logoutAdmin()" class="text-red-500 font-bold">Sair</button>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+            <h2 class="text-xl font-bold mb-4">Números Distribuídos (<span id="totalTicketsCount">0</span>/1000)</h2>
+            <div id="adminTickets" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 text-sm"></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-md">
+            <h2 class="text-xl font-bold mb-4">Usuários e Transações</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="p-3 border-b">ID Usuário</th>
+                            <th class="p-3 border-b">Carteira</th>
+                            <th class="p-3 border-b">Saldo Anterior</th>
+                            <th class="p-3 border-b">Saldo Acumulado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminToken = localStorage.getItem('admin_token');
+
+        if (adminToken) {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('hidden');
+            loadAdminData();
+        }
+
+        async function adminLogin() {
+            const u = document.getElementById('adminUser').value;
+            const p = document.getElementById('adminPass').value;
+            const res = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: u, password: p})
+            });
+            const data = await res.json();
+            if(res.ok) {
+                localStorage.setItem('admin_token', data.token);
+                window.location.reload();
+            } else {
+                Swal.fire('Erro', 'Credenciais inválidas', 'error');
+            }
+        }
+
+        function logoutAdmin() {
+            localStorage.removeItem('admin_token');
+            window.location.reload();
+        }
+
+        async function loadAdminData() {
+            try {
+                const res = await fetch('/api/admin/stats', {
+                    headers: {'Authorization': `Bearer ${adminToken}`}
+                });
+                if(res.status === 401 || res.status === 403) return logoutAdmin();
+
+                const data = await res.json();
+
+                // Render Tickets
+                document.getElementById('totalTicketsCount').innerText = data.tickets.length;
+                const ticketsHtml = data.tickets.map(t =>
+                    `<div class="bg-blue-50 p-2 rounded border border-blue-100 text-center">
+                        <span class="font-bold block">${String(t.ticket_number).padStart(4,'0')}</span>
+                        <span class="text-xs text-gray-500 block truncate" title="${t.wallet_address}">${t.wallet_address.substring(0,8)}...</span>
+                    </div>`
+                ).join('');
+                document.getElementById('adminTickets').innerHTML = ticketsHtml;
+
+                // Render Users
+
+                function escapeHtml(unsafe) {
+                    return unsafe
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/"/g, "&quot;")
+                        .replace(/'/g, "&#039;");
+                }
+                const usersHtml = data.users.map(u =>
+                    `<tr>
+                        <td class="p-3 border-b">${u.id}</td>
+                        <td class="p-3 border-b font-mono text-sm">${escapeHtml(u.wallet_address)}</td>
+                        <td class="p-3 border-b">${u.previous_balance.toLocaleString()} MITK</td>
+                        <td class="p-3 border-b">${(u.total_accumulated || 0).toLocaleString()} MITK</td>
+                    </tr>`
+                ).join('');
+                document.getElementById('usersTableBody').innerHTML = usersHtml;
+
+            } catch(e) {
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+</html>
