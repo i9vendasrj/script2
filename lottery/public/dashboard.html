@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiToken | Dashboard do Sorteio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; overflow-x: hidden; }
+        .bg-animated { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-image: url('https://multitoken.top/images/background2.jpg'); background-size: cover; background-position: center; z-index: -2; animation: breathe 25s ease-in-out infinite alternate; }
+        @keyframes breathe { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
+        .glass-card { background: rgba(255, 255, 255, 0.85); border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15); backdrop-filter: blur(16px); }
+        .input-form { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #cbd5e1; outline: none; transition: 0.3s; background: rgba(255,255,255,0.9); }
+        .input-form:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+    </style>
+</head>
+<body class="min-h-screen relative flex flex-col items-center py-10">
+    <div class="bg-animated"></div>
+
+    <div class="glass-card w-full max-w-3xl p-8 rounded-3xl mx-4 relative">
+        <button onclick="logout()" class="absolute top-6 right-6 text-red-500 hover:text-red-700 font-bold"><i class="fas fa-sign-out-alt"></i> Sair</button>
+
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Meu Painel</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white/60 p-4 rounded-xl border border-gray-200 shadow-sm">
+                <p class="text-sm text-gray-500 font-semibold uppercase">Saldo Anterior (Cadastro)</p>
+                <p class="text-2xl font-bold text-blue-600" id="prevBalance">0.00 MITK</p>
+            </div>
+            <div class="bg-white/60 p-4 rounded-xl border border-gray-200 shadow-sm">
+                <p class="text-sm text-gray-500 font-semibold uppercase">Total Comprado (Acumulado)</p>
+                <p class="text-2xl font-bold text-green-600" id="totalAccumulated">0.00 MITK</p>
+            </div>
+            <div class="bg-white/60 p-4 rounded-xl border border-gray-200 shadow-sm">
+                <p class="text-sm text-gray-500 font-semibold uppercase">Saldo Restante (Para Sorteio)</p>
+                <p class="text-2xl font-bold text-orange-500" id="currentRemainder">0.00 MITK</p>
+                <p class="text-xs text-gray-400 mt-1">Acumule 200.000 MITK para 1 número.</p>
+            </div>
+        </div>
+
+        <div class="mb-8">
+            <h2 class="text-xl font-bold mb-3">Registrar Compra</h2>
+            <form onsubmit="submitTx(event)" class="flex flex-col sm:flex-row gap-3">
+                <input type="text" id="txid" class="input-form flex-grow" placeholder="Cole a TXID (Transaction Hash) da compra..." required>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg whitespace-nowrap">
+                    Validar TXID
+                </button>
+            </form>
+        </div>
+
+        <div>
+            <h2 class="text-xl font-bold mb-3">Meus Números para Sorteio (<span id="totalTickets">0</span>)</h2>
+            <div id="ticketsContainer" class="flex flex-wrap gap-3">
+                <!-- Numbers will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('lottery_token');
+        if (!token) window.location.href = '/';
+
+        async function loadProfile() {
+            try {
+                const res = await fetch('/api/profile', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    logout();
+                    return;
+                }
+
+                const data = await res.json();
+                document.getElementById('prevBalance').innerText = data.previousBalance.toLocaleString() + ' MITK';
+                document.getElementById('currentRemainder').innerText = data.currentRemainder.toLocaleString() + ' MITK';
+                document.getElementById('totalAccumulated').innerText = (data.totalAccumulated || 0).toLocaleString() + ' MITK';
+                document.getElementById('totalTickets').innerText = data.totalTickets;
+
+                const container = document.getElementById('ticketsContainer');
+                container.innerHTML = '';
+                if (data.tickets.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm">Nenhum número recebido ainda.</p>';
+                } else {
+                    data.tickets.forEach(ticket => {
+                        const div = document.createElement('div');
+                        div.className = 'bg-blue-100 text-blue-800 font-bold py-2 px-4 rounded-lg border border-blue-200 shadow-sm text-lg';
+                        div.innerText = String(ticket).padStart(4, '0');
+                        container.appendChild(div);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading profile', error);
+            }
+        }
+
+        async function submitTx(e) {
+            e.preventDefault();
+            const txid = document.getElementById('txid').value.trim();
+
+            try {
+                Swal.fire({ title: 'Validando na blockchain...', text: 'Isso pode levar alguns segundos.', didOpen: () => { Swal.showLoading(); } });
+                const res = await fetch('/api/submit-tx', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ txid })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    let msg = `Compra de ${data.amountAdded} MITK validada com sucesso!`;
+                    if (data.ticketsAwarded > 0) {
+                        msg += `<br>Você ganhou ${data.ticketsAwarded} número(s): <b>${data.awardedNumbers.join(', ')}</b>`;
+                    } else {
+                        msg += `<br>O valor foi adicionado ao seu saldo restante.`;
+                    }
+                    Swal.fire('Sucesso!', msg, 'success');
+                    document.getElementById('txid').value = '';
+                    loadProfile();
+                } else {
+                    Swal.fire('Erro', data.error, 'error');
+                }
+            } catch (error) {
+                Swal.fire('Erro', 'Erro ao validar transação.', 'error');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('lottery_token');
+            window.location.href = '/';
+        }
+
+        loadProfile();
+    </script>
+</body>
+</html>
