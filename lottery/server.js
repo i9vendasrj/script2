@@ -218,14 +218,23 @@ app.post('/api/submit-tx', authenticateToken, async (req, res) => {
             log.includes('Program 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8') // Raydium
         );
 
-        if (!isDexSwap) {
-             // For strict enforcement:
-             // activeProcessingTxids.delete(txid);
-             // return res.status(400).json({ error: 'Transaction must be a purchase via DEX, not a P2P transfer.' });
-             // Relaxed for now, but we check if it is a swap. Let's enforce it:
+        let isApprovedPixTransfer = false;
+        const PIX_WALLET = '3pcRvSGPqin6BgonWzKk65qCiWMtXXihyNLucoMjETfg';
+        const pixPre = preTokenBalances.find(b => b.mint === MITK_MINT && b.owner === PIX_WALLET);
+        const pixPost = postTokenBalances.find(b => b.mint === MITK_MINT && b.owner === PIX_WALLET);
 
+        // Sometimes preTokenBalances might exist and post might be missing if completely drained (rare, but possible),
+        // or we just check if the PIX_WALLET had a decrease in balance.
+        const pixPreAmount = pixPre ? parseFloat(pixPre.uiTokenAmount.uiAmountString) : 0;
+        const pixPostAmount = pixPost ? parseFloat(pixPost.uiTokenAmount.uiAmountString) : 0;
+
+        if (pixPreAmount > pixPostAmount) {
+            isApprovedPixTransfer = true;
+        }
+
+        if (!isDexSwap && !isApprovedPixTransfer) {
              activeProcessingTxids.delete(txid);
-             return res.status(400).json({ error: 'Transaction must be a DEX swap, direct transfers are not allowed.' });
+             return res.status(400).json({ error: 'Transação não permitida. Apenas compras via DEX ou PIX aprovado.' });
         }
 
         // 4. Calculate tickets
